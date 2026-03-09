@@ -14,8 +14,9 @@ export const initScheduler = () => {
             await updateGoogleSheets();
 
             logger.info("Update completed successfully");
-        } catch (error: any) {
-            logger.error(`Error during scheduled task: ${error.message}`);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            logger.error(`Error during scheduled task: ${message}`);
         }
     });
 };

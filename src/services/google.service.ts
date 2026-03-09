@@ -5,6 +5,7 @@ import knex from "#postgres/knex.js";
 import { getLogger } from "#config/logger.js";
 import { getTodayDate, getReadableTimestamp } from "#utils/date.js";
 import env from "#config/env/env.js";
+import { type TariffRow } from "#types/tariff.js";
 
 const logger = getLogger("google-sheets");
 const limit = pLimit(5);
@@ -13,7 +14,13 @@ const auth = new google.auth.JWT(env.GOOGLE_SERVICE_ACCOUNT_EMAIL, undefined, en
 
 const sheets = google.sheets({ version: "v4", auth });
 
+const verifiedSheets = new Set<string>();
+
 async function ensureSheetExists(spreadsheetId: string, title: string) {
+    const cacheKey = `${spreadsheetId}:${title}`;
+    
+    if (verifiedSheets.has(cacheKey)) return;
+
     const res = await sheets.spreadsheets.get({ spreadsheetId });
     const sheetExists = res.data.sheets?.some((s) => s.properties?.title === title);
 
@@ -26,11 +33,54 @@ async function ensureSheetExists(spreadsheetId: string, title: string) {
             },
         });
     }
+
+    verifiedSheets.add(cacheKey);
+}
+
+const prepareGoogleSheetsData = (tariffs: TariffRow[], updatedTime: string): (string | number | null | undefined)[][] => {
+    return [
+        [`Данные обновлены (МСК): ${updatedTime}`],
+        [],
+        [
+            "Название склада",
+            "Округ РФ / Страна",
+            "FBS: Коэф %",
+            "FBS: Первый литр (₽)",
+            "FBS: Доп. литр (₽)",
+            "Логистика: Коэф %",
+            "Логистика: Первый литр (₽)",
+            "Логистика: Доп. литр (₽)",
+            "Хранение: Коэф %",
+            "Хранение: Первый литр (₽)",
+            "Хранение: Доп. литр (₽)",
+            "Дата начала тарифа",
+            "Дата окончания тарифа",
+        ],
+        ...tariffs.map((t) => [
+            t.warehouse_name,
+            t.geo_name,
+            t.box_delivery_marketplace_coef_expr,
+            t.box_delivery_marketplace_base,
+            t.box_delivery_marketplace_liter,
+            t.box_delivery_coef_expr,
+            t.box_delivery_base,
+            t.box_delivery_liter,
+            t.box_storage_coef_expr,
+            t.box_storage_base,
+            t.box_storage_liter,
+            t.dt_next_box,
+            t.dt_till_max,
+        ]),
+    ];
+};
+
+interface SpreadsheetRow {
+    spreadsheet_id: string;
 }
 
 export const updateGoogleSheets = async () => {
     try {
-        const rows = await knex("spreadsheets").select("spreadsheet_id");
+        const rows = await knex<SpreadsheetRow>("spreadsheets").select("spreadsheet_id");
         const spreadsheetIds = rows.map((r) => r.spreadsheet_id);
 
         if (spreadsheetIds.length === 0) {
@@ -38,7 +88,7 @@ export const updateGoogleSheets = async () => {
         }
 
         const today = getTodayDate();
-        const tariffs = await knex("tariffs").where("date", today).orderBy("box_delivery_marketplace_coef_expr", "asc");
+        const tariffs = await knex<TariffRow>("tariffs").where("date", today).orderBy("box_delivery_marketplace_coef_expr", "asc");
 
         if (tariffs.length === 0) {
             return logger.warn(`Нет актуальных тарифов в БД за дату ${today}`);
@@ -46,40 +96,7 @@ export const updateGoogleSheets = async () => {
 
         const updatedTime = getReadableTimestamp();
 
-        const values = [
-            [`Данные обновлены (МСК): ${updatedTime}`],
-            [],
-            [
-                "Название склада",
-                "Округ РФ / Страна",
-                "FBS: Коэф %",
-                "FBS: Первый литр (₽)",
-                "FBS: Доп. литр (₽)",
-                "Логистика: Коэф %",
-                "Логистика: Первый литр (₽)",
-                "Логистика: Доп. литр (₽)",
-                "Хранение: Коэф %",
-                "Хранение: Первый литр (₽)",
-                "Хранение: Доп. литр (₽)",
-                "Дата начала тарифа",
-                "Дата окончания тарифа",
-            ],
-            ...tariffs.map((t) => [
-                t.warehouse_name,
-                t.geo_name,
-                t.box_delivery_marketplace_coef_expr, // коэффициент для сортировки
-                t.box_delivery_marketplace_base,
-                t.box_delivery_marketplace_liter,
-                t.box_delivery_coef_expr,
-                t.box_delivery_base,
-                t.box_delivery_liter,
-                t.box_storage_coef_expr,
-                t.box_storage_base,
-                t.box_storage_liter,
-                t.dt_next_box,
-                t.dt_till_max,
-            ]),
-        ];
+        const values = prepareGoogleSheetsData(tariffs, updatedTime);
 
         const sheetName = "stocks_coefs";
 
@@ -89,7 +106,7 @@ export const updateGoogleSheets = async () => {
             limit(async () => {
                 try {
                     await retry(
-                        async (bail: any) => {
+                        async (bail) => {
                             try {
                                 await ensureSheetExists(id, sheetName);
 
@@ -106,9 +123,10 @@ export const updateGoogleSheets = async () => {
                                 });
 
                                 logger.info(`[${id}] Успешно обновлена`);
-                            } catch (err: any) {
-                                if (err.code === 403 || err.code === 404) {
-                                    bail(new Error(`Критическая ошибка для ${id}: ${err.message}`));
+                            } catch (err: unknown) {
+                                const gError = err as { code?: number; message?: string };
+                                if (gError.code === 403 || gError.code === 404) {
+                                    bail(new Error(`Ошибка доступа [${id}]: ${gError.message}`));
                                     return;
                                 }
                                 throw err;
@@ -118,18 +136,23 @@ export const updateGoogleSheets = async () => {
                             retries: 3,
                             factor: 2,
                             minTimeout: 1000,
-                            onRetry: (err: any) => logger.warn(`[${id}] Повторная попытка обновления из-за ошибки: ${err.message}`),
+                            onRetry: (err: unknown) => {
+                                const msg = err instanceof Error ? err.message : String(err);
+                                logger.warn(`[${id}] Повторная попытка: ${msg}`);
+                            },
                         },
                     );
-                } catch (err: any) {
-                    logger.error(`[${id}] Не удалось обновить: ${err.message}`);
+                } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    logger.error(`[${id}] Не удалось обновить: ${msg}`);
                 }
             }),
         );
 
         await Promise.all(tasks);
         logger.info("Все таблицы обработаны.");
-    } catch (err: any) {
-        logger.error(`Глобальная ошибка сервиса Google Sheets: ${err.message}`);
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Глобальная ошибка сервиса Google Sheets: ${msg}`);
     }
 };

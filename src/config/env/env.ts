@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = z.object({
     TZ: z.string().default("Europe/Moscow"),
-    
+
     NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
     APP_PORT: z.coerce.number().default(5000),
 
@@ -23,6 +23,7 @@ const envSchema = z.object({
     GOOGLE_PRIVATE_KEY: z
         .string()
         .min(1)
+        .transform((key) => key.replace(/^["']|["']$/g, ""))
         .transform((key) => key.replace(/\\n/g, "\n")),
     GOOGLE_SHEET_IDS: z
         .string()
