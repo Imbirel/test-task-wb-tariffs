@@ -20,7 +20,21 @@
 
 ## 📦 Быстрый запуск
 
-### 1. Подготовка окружения
+### 1. Настройка Google Cloud и Таблиц
+
+1. Создание ключей:
+   - В [Google Cloud Console](https://console.cloud.google.com) создайте проект и включите Google Sheets API.
+   - В разделе Service Accounts создайте аккаунт и сгенерируйте ключ JSON.
+   - Из скачанного JSON-файла вам понадобятся:
+     - `client_email` — для переменной `GOOGLE_SERVICE_ACCOUNT_EMAIL`.
+     - `private_key` — для переменной `GOOGLE_PRIVATE_KEY`.
+
+2. Связка с таблицами:
+   - Откройте каждую Google-таблицу, в которую нужно выгружать данные.
+   - Нажмите Share (Поделиться) и добавьте почту вашего сервисного аккаунта (`client_email`) с ролью Editor (Редактор).
+   - Убедитесь, что целевой лист в каждой таблице называется `stocks_coefs`.
+
+### 2. Подготовка окружения
 
 Создайте файл .env на основе .env.example:
 
@@ -33,11 +47,15 @@ cp .env.example .env
 - WB_API_TOKEN: Ваш токен из личного кабинета WB.
 - GOOGLE_SERVICE_ACCOUNT_EMAIL: Email сервисного аккаунта.
 - GOOGLE_PRIVATE_KEY: Приватный ключ (включая -----BEGIN PRIVATE KEY-----).
-- GOOGLE_SHEET_IDS: ID таблиц через запятую.
+- GOOGLE_SHEET_IDS: ID таблиц через запятую (ID — это часть URL между /d/ и /edit).
 
-Важно: Добавьте email сервисного аккаунта в список редакторов (Editor) для каждой Google-таблицы. Лист в таблице должен называться stocks_coefs.
+В `.env` также можно настроить:
 
-### 2. Запуск в Docker
+- `CRON_SCHEDULE`: Интервал сбора данных в формате CRON (по умолчанию `0 * * * *` — каждый час).
+- `TZ`: Часовой пояс для логов и базы данных (по умолчанию `Europe/Moscow`).
+- `LOG_LEVEL`: Глубина логирования (`info`, `debug`, `error`).
+
+### 3. Запуск в Docker
 
 ```bash
 docker compose up -d --build
