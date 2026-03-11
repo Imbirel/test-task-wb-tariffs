@@ -37,6 +37,8 @@ const envSchema = z.object({
 
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
     LOG_FILE_PATH: z.string().default("./logs/app.log"),
+
+    CRON_SCHEDULE: z.string().default("0 * * * *"),
 });
 
 const parsed = envSchema.safeParse(process.env);

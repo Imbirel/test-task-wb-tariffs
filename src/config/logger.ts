@@ -16,7 +16,7 @@ log4js.configure({
             pattern: "yyyy-MM-dd",
             keepFileExt: true,
             compress: true,
-            daysToKeep: 7,
+            numBackups: 7,
             layout: { 
                 type: "pattern",
                 pattern: "[%d{yyyy-MM-dd hh:mm:ss}] [%p] %c - %m" 

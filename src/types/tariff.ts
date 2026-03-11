@@ -3,7 +3,7 @@ import { z } from "zod";
 const formatDate = (val: string | null | undefined) => {
     if (!val) return null;
     const date = new Date(val);
-    return isNaN(date.getTime()) ? null : date.toLocaleDateString('en-CA');
+    return isNaN(date.getTime()) ? null : date.toLocaleDateString("en-CA");
 };
 
 const wbNumber = z.preprocess((val) => {

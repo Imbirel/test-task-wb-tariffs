@@ -18,7 +18,7 @@ const verifiedSheets = new Set<string>();
 
 async function ensureSheetExists(spreadsheetId: string, title: string) {
     const cacheKey = `${spreadsheetId}:${title}`;
-    
+
     if (verifiedSheets.has(cacheKey)) return;
 
     const res = await sheets.spreadsheets.get({ spreadsheetId });

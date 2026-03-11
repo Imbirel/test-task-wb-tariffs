@@ -7,9 +7,9 @@ import { getTodayDate } from "#utils/date.js";
 
 const logger = getLogger("tariff-service");
 
-const mapWbResponseToRows = (data: WbTariffsResponse, today: string): TariffRow[] => {
+export const mapWbResponseToRows = (data: WbTariffsResponse, today: string): TariffRow[] => {
     const { warehouseList, dtNextBox, dtTillMax } = data;
-    
+
     return warehouseList.map((item) => ({
         date: today,
         warehouse_name: item.warehouseName,
