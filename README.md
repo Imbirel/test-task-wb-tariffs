@@ -23,7 +23,7 @@
 ### 1. Настройка Google Cloud и Таблиц
 
 1. Создание ключей:
-   - В [Google Cloud Console](https://console.cloud.google.com) создайте проект и включите Google Sheets API.
+   - В [Google Cloud Console](https://console.cloud.google.com) создайте проект и включите Google Sheets API в разделе Library.
    - В разделе Service Accounts создайте аккаунт и сгенерируйте ключ JSON.
    - Из скачанного JSON-файла вам понадобятся:
      - `client_email` — для переменной `GOOGLE_SERVICE_ACCOUNT_EMAIL`.
@@ -44,10 +44,10 @@ cp .env.example .env
 
 Заполните обязательные переменные:
 
-- WB_API_TOKEN: Ваш токен из личного кабинета WB.
-- GOOGLE_SERVICE_ACCOUNT_EMAIL: Email сервисного аккаунта.
-- GOOGLE_PRIVATE_KEY: Приватный ключ (включая -----BEGIN PRIVATE KEY-----).
-- GOOGLE_SHEET_IDS: ID таблиц через запятую (ID — это часть URL между /d/ и /edit).
+- `WB_API_TOKEN`: Ваш токен из личного кабинета WB.
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Email сервисного аккаунта (`client_email`).
+- `GOOGLE_PRIVATE_KEY`: Приватный ключ `private_key` (включая -----BEGIN PRIVATE KEY-----).
+- `GOOGLE_SHEET_IDS`: ID таблиц через запятую (ID — это часть URL между /d/ и /edit).
 
 В `.env` также можно настроить:
 
