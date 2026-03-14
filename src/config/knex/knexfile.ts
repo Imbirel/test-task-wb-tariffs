@@ -37,13 +37,13 @@ const knexConfigs: Record<"development" | "production" | "test", Knex.Config> = 
             max: 10,
         },
         migrations: {
-            stub: 'dist/config/knex/migration.stub.js',
+            stub: './dist/config/knex/migration.stub.js',
             directory: "./dist/postgres/migrations",
             tableName: "migrations",
             extension: "js",
         },
         seeds: {
-            stub: 'src/config/knex/seed.stub.js',
+            stub: './dist/config/knex/seed.stub.js',
             directory: "./dist/postgres/seeds",
             extension: "js",
         },
