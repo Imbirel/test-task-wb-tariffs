@@ -27,6 +27,7 @@ export async function up(knex) {
         table.timestamp("fetched_at", { useTz: true }).defaultTo(knex.fn.now());
 
         table.unique(["date", "warehouse_name"]);
+        table.index(["date", "box_delivery_marketplace_coef_expr"]);
     });
 }
 
